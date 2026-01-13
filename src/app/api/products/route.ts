@@ -9,6 +9,9 @@ import {
 
 export const runtime = "nodejs";
 
+// Tillåt att man kan skapa produkter som publiceras senare.
+// Format: "YYYY-MM-DD HH:MM:SS" (SQLite-friendly) eller ISO-sträng.
+// Vi normaliserar till en SQLite-string.
 const CreateProductSchema = z.object({
   sku: z.string().min(1),
   name: z.string().min(1),
@@ -17,7 +20,28 @@ const CreateProductSchema = z.object({
   inStock: z.coerce.boolean().optional(),
   active: z.coerce.boolean().optional(),
   categoryIds: z.array(z.coerce.number().int().positive()).optional().default([]),
+
+  // NYTT:
+  // kan vara t.ex. "2026-01-13 12:00:00" eller ISO "2026-01-13T12:00:00.000Z"
+  publishedAt: z.string().optional(),
 });
+
+function toSqliteDateTime(input?: string) {
+  if (!input) return null;
+
+  // Om användaren skickar "YYYY-MM-DD HH:MM:SS" -> använd direkt
+  const looksSqlite = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(input.trim());
+  if (looksSqlite) return input.trim();
+
+  // Annars försök tolka som ISO/date och konvertera till "YYYY-MM-DD HH:MM:SS" (UTC)
+  const d = new Date(input);
+  if (Number.isNaN(d.getTime())) return null;
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(
+    d.getUTCHours()
+  )}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
+}
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -26,6 +50,9 @@ export async function GET(req: Request) {
 
   const where: string[] = [];
   const params: any[] = [];
+
+  // ✅ Viktigt: bara publicerade produkter (framtida produkter syns inte)
+  where.push("p.published_at <= datetime('now')");
 
   if (search) {
     where.push("p.name LIKE ?");
@@ -47,9 +74,10 @@ export async function GET(req: Request) {
   const sql = `
     SELECT
       p.id, p.sku, p.name, p.slug, p.description,
-      p.price_cents, p.in_stock, p.active, p.created_at
+      p.price_cents, p.in_stock, p.active,
+      p.published_at, p.created_at
     FROM products p
-    ${where.length ? "WHERE " + where.join(" AND ") : ""}
+    WHERE ${where.join(" AND ")}
     ORDER BY p.id DESC
   `;
 
@@ -75,12 +103,27 @@ export async function POST(req: Request) {
   const name = parsed.data.name.trim();
   const slug = generateUniqueSlug("products", name);
 
+  // publishedAt: om null => default i DB (datetime('now'))
+  const publishedAt = toSqliteDateTime(parsed.data.publishedAt);
+
+  // Om användaren skickade publishedAt men det var ogiltigt -> 400
+  if (parsed.data.publishedAt && !publishedAt) {
+    return NextResponse.json(
+      { error: "Invalid publishedAt. Use ISO date or 'YYYY-MM-DD HH:MM:SS'." },
+      { status: 400 }
+    );
+  }
+
   try {
     const info = db
       .prepare(
         `
-        INSERT INTO products (sku, name, slug, description, price_cents, in_stock, active)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO products (
+          sku, name, slug, description,
+          price_cents, in_stock, active,
+          published_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')))
         `
       )
       .run(
@@ -90,7 +133,8 @@ export async function POST(req: Request) {
         parsed.data.description?.trim() || null,
         parsed.data.priceCents,
         parsed.data.inStock === false ? 0 : 1,
-        parsed.data.active === false ? 0 : 1
+        parsed.data.active === false ? 0 : 1,
+        publishedAt
       );
 
     const productId = Number(info.lastInsertRowid);
@@ -101,24 +145,26 @@ export async function POST(req: Request) {
     const product = db
       .prepare(
         `
-        SELECT id, sku, name, slug, description, price_cents, in_stock, active, created_at
+        SELECT
+          id, sku, name, slug, description,
+          price_cents, in_stock, active,
+          published_at, created_at
         FROM products
         WHERE id = ?
         `
       )
-      .get(productId);
+      .get(productId) as any;
 
     return NextResponse.json(
       {
         ...product,
-        in_stock: (product as any).in_stock === 1,
-        active: (product as any).active === 1,
+        in_stock: product.in_stock === 1,
+        active: product.active === 1,
         categories: getCategoriesForProduct(productId),
       },
       { status: 201 }
     );
   } catch (e: any) {
-    // Vanligaste: SKU UNIQUE
     const msg = String(e?.message || "");
     if (msg.includes("UNIQUE") && (msg.includes("products.sku") || msg.includes("sku"))) {
       return NextResponse.json({ error: "SKU already exists" }, { status: 409 });

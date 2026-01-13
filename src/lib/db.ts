@@ -25,8 +25,10 @@ CREATE TABLE IF NOT EXISTS products (
   price_cents INTEGER NOT NULL,
   in_stock INTEGER NOT NULL DEFAULT 1,
   active INTEGER NOT NULL DEFAULT 1,
+  published_at TEXT NOT NULL DEFAULT (datetime('now')),
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
 
 CREATE TABLE IF NOT EXISTS product_categories (
   product_id INTEGER NOT NULL,

@@ -61,7 +61,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   if (!current) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Om name ändras: generera unik slug (excludeId = id)
+  // Om name ändras: generera unik slug
   let newName: string | undefined;
   let newSlug: string | undefined;
 
