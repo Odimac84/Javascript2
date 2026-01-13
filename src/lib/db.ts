@@ -22,11 +22,12 @@ CREATE TABLE IF NOT EXISTS products (
   name TEXT NOT NULL,
   slug TEXT NOT NULL UNIQUE,
   description TEXT,
+  image_url TEXT NOT NULL,
   price_cents INTEGER NOT NULL,
   in_stock INTEGER NOT NULL DEFAULT 1,
   active INTEGER NOT NULL DEFAULT 1,
-  published_at TEXT NOT NULL DEFAULT (datetime('now')),
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  publish_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 

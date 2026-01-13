@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { generateUniqueSlug } from "@/lib/slug";
+import { PLACEHOLDER_IMAGE } from "@/lib/constants";
 import {
   getCategoriesForProduct,
   setProductCategories,
@@ -9,9 +10,6 @@ import {
 
 export const runtime = "nodejs";
 
-// Tillåt att man kan skapa produkter som publiceras senare.
-// Format: "YYYY-MM-DD HH:MM:SS" (SQLite-friendly) eller ISO-sträng.
-// Vi normaliserar till en SQLite-string.
 const CreateProductSchema = z.object({
   sku: z.string().min(1),
   name: z.string().min(1),
@@ -20,21 +18,17 @@ const CreateProductSchema = z.object({
   inStock: z.coerce.boolean().optional(),
   active: z.coerce.boolean().optional(),
   categoryIds: z.array(z.coerce.number().int().positive()).optional().default([]),
-
-  // NYTT:
-  // kan vara t.ex. "2026-01-13 12:00:00" eller ISO "2026-01-13T12:00:00.000Z"
-  publishedAt: z.string().optional(),
+  publishedAt: z.string().optional(), // "YYYY-MM-DD HH:MM:SS" eller ISO
 });
 
 function toSqliteDateTime(input?: string) {
   if (!input) return null;
 
-  // Om användaren skickar "YYYY-MM-DD HH:MM:SS" -> använd direkt
-  const looksSqlite = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(input.trim());
-  if (looksSqlite) return input.trim();
+  const s = input.trim();
+  const looksSqlite = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s);
+  if (looksSqlite) return s;
 
-  // Annars försök tolka som ISO/date och konvertera till "YYYY-MM-DD HH:MM:SS" (UTC)
-  const d = new Date(input);
+  const d = new Date(s);
   if (Number.isNaN(d.getTime())) return null;
 
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -51,7 +45,7 @@ export async function GET(req: Request) {
   const where: string[] = [];
   const params: any[] = [];
 
-  // ✅ Viktigt: bara publicerade produkter (framtida produkter syns inte)
+  // ✅ only publicerade
   where.push("p.published_at <= datetime('now')");
 
   if (search) {
@@ -74,6 +68,7 @@ export async function GET(req: Request) {
   const sql = `
     SELECT
       p.id, p.sku, p.name, p.slug, p.description,
+      p.image_url,
       p.price_cents, p.in_stock, p.active,
       p.published_at, p.created_at
     FROM products p
@@ -85,6 +80,7 @@ export async function GET(req: Request) {
 
   const normalized = rows.map((p) => ({
     ...p,
+    image_url: p.image_url || PLACEHOLDER_IMAGE,
     in_stock: p.in_stock === 1,
     active: p.active === 1,
     categories: getCategoriesForProduct(p.id),
@@ -103,10 +99,7 @@ export async function POST(req: Request) {
   const name = parsed.data.name.trim();
   const slug = generateUniqueSlug("products", name);
 
-  // publishedAt: om null => default i DB (datetime('now'))
   const publishedAt = toSqliteDateTime(parsed.data.publishedAt);
-
-  // Om användaren skickade publishedAt men det var ogiltigt -> 400
   if (parsed.data.publishedAt && !publishedAt) {
     return NextResponse.json(
       { error: "Invalid publishedAt. Use ISO date or 'YYYY-MM-DD HH:MM:SS'." },
@@ -120,10 +113,11 @@ export async function POST(req: Request) {
         `
         INSERT INTO products (
           sku, name, slug, description,
+          image_url,
           price_cents, in_stock, active,
           published_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')))
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')))
         `
       )
       .run(
@@ -131,6 +125,7 @@ export async function POST(req: Request) {
         name,
         slug,
         parsed.data.description?.trim() || null,
+        PLACEHOLDER_IMAGE,
         parsed.data.priceCents,
         parsed.data.inStock === false ? 0 : 1,
         parsed.data.active === false ? 0 : 1,
@@ -139,7 +134,6 @@ export async function POST(req: Request) {
 
     const productId = Number(info.lastInsertRowid);
 
-    // Koppla categories (om skickade)
     setProductCategories(productId, parsed.data.categoryIds);
 
     const product = db
@@ -147,6 +141,7 @@ export async function POST(req: Request) {
         `
         SELECT
           id, sku, name, slug, description,
+          image_url,
           price_cents, in_stock, active,
           published_at, created_at
         FROM products
@@ -158,6 +153,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         ...product,
+        image_url: product.image_url || PLACEHOLDER_IMAGE,
         in_stock: product.in_stock === 1,
         active: product.active === 1,
         categories: getCategoriesForProduct(productId),
