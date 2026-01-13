@@ -2,12 +2,27 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { generateUniqueSlug } from "@/lib/slug";
+import { PLACEHOLDER_IMAGE } from "@/lib/constants";
 import {
   getCategoriesForProduct,
   setProductCategories,
 } from "@/lib/repo/productCategories.repo";
 
 export const runtime = "nodejs";
+
+type ProductRow = {
+  id: number;
+  sku: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  image_url: string;
+  price_cents: number;
+  in_stock: number; // 0/1
+  active: number; // 0/1
+  published_at: string;
+  created_at: string;
+};
 
 const PatchSchema = z.object({
   name: z.string().min(1).optional(),
@@ -16,7 +31,35 @@ const PatchSchema = z.object({
   inStock: z.coerce.boolean().optional(),
   active: z.coerce.boolean().optional(),
   categoryIds: z.array(z.coerce.number().int().positive()).optional(),
+  imageUrl: z.string().url().optional(),
+  publishedAt: z.string().optional(), // ISO eller "YYYY-MM-DD HH:MM:SS"
 });
+
+function toSqliteDateTime(input?: string): string | null {
+  if (!input) return null;
+
+  const s = input.trim();
+  const looksSqlite = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s);
+  if (looksSqlite) return s;
+
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return null;
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(
+    d.getUTCHours()
+  )}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
+}
+
+function normalize(row: ProductRow) {
+  return {
+    ...row,
+    image_url: row.image_url || PLACEHOLDER_IMAGE,
+    in_stock: row.in_stock === 1,
+    active: row.active === 1,
+    categories: getCategoriesForProduct(row.id),
+  };
+}
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const id = Number(params.id);
@@ -27,21 +70,19 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   const row = db
     .prepare(
       `
-      SELECT id, sku, name, slug, description, price_cents, in_stock, active, created_at
+      SELECT
+        id, sku, name, slug, description,
+        image_url,
+        price_cents, in_stock, active,
+        published_at, created_at
       FROM products
       WHERE id = ?
       `
     )
-    .get(id);
+    .get(id) as ProductRow | undefined;
 
   if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  return NextResponse.json({
-    ...row,
-    in_stock: (row as any).in_stock === 1,
-    active: (row as any).active === 1,
-    categories: getCategoriesForProduct(id),
-  });
+  return NextResponse.json(normalize(row));
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
@@ -61,13 +102,21 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   if (!current) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Om name ändras: generera unik slug
+  // name -> unique slug
   let newName: string | undefined;
   let newSlug: string | undefined;
 
   if (parsed.data.name !== undefined) {
     newName = parsed.data.name.trim();
     newSlug = generateUniqueSlug("products", newName, id);
+  }
+
+  const publishedAt = toSqliteDateTime(parsed.data.publishedAt);
+  if (parsed.data.publishedAt && !publishedAt) {
+    return NextResponse.json(
+      { error: "Invalid publishedAt. Use ISO date or 'YYYY-MM-DD HH:MM:SS'." },
+      { status: 400 }
+    );
   }
 
   const fields: string[] = [];
@@ -97,34 +146,41 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     fields.push("active = ?");
     values.push(parsed.data.active ? 1 : 0);
   }
+  if (parsed.data.imageUrl !== undefined) {
+    fields.push("image_url = ?");
+    values.push(parsed.data.imageUrl.trim() || PLACEHOLDER_IMAGE);
+  }
+  if (publishedAt !== null) {
+    fields.push("published_at = ?");
+    values.push(publishedAt);
+  }
 
-  // Uppdatera product-fält om något skickats
   if (fields.length > 0) {
     values.push(id);
     db.prepare(`UPDATE products SET ${fields.join(", ")} WHERE id = ?`).run(...values);
   }
 
-  // Uppdatera categories om categoryIds skickats
-  if (parsed.data.categoryIds) {
+  // allow [] to clear categories
+  if (parsed.data.categoryIds !== undefined) {
     setProductCategories(id, parsed.data.categoryIds);
   }
 
-  const updated = db
+  const row = db
     .prepare(
       `
-      SELECT id, sku, name, slug, description, price_cents, in_stock, active, created_at
+      SELECT
+        id, sku, name, slug, description,
+        image_url,
+        price_cents, in_stock, active,
+        published_at, created_at
       FROM products
       WHERE id = ?
       `
     )
-    .get(id);
+    .get(id) as ProductRow | undefined;
 
-  return NextResponse.json({
-    ...updated,
-    in_stock: (updated as any).in_stock === 1,
-    active: (updated as any).active === 1,
-    categories: getCategoriesForProduct(id),
-  });
+  if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json(normalize(row));
 }
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {

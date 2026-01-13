@@ -6,38 +6,41 @@ export default function Header() {
   return (
     <header className="border-b">
       <div className="mx-auto w-full max-w-6xl px-4 py-3">
-        {/* Top area: image + search + icons */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="w-full sm:w-56">
-            <Image
-              src={PLACEHOLDER_IMAGE}
-              alt="Header banner"
-              width={600}
-              height={400}
-              className="h-14 w-full rounded-md border object-cover"
+        {/* Top row */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          {/* Left group: image + search */}
+          <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center lg:w-1/2">
+            {/* Image/banner */}
+            <div className="w-full sm:w-56">
+              <Image
+                src={PLACEHOLDER_IMAGE}
+                alt="Header banner"
+                width={600}
+                height={400}
+                className="h-14 w-full rounded-md border object-cover"
+              />
+            </div>
+
+            {/* Search (max 300px on lg) */}
+            <input
+              className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:border-neutral-900 lg:max-w-[300px]"
+              placeholder="Sök produkt…"
             />
           </div>
 
-          <div className="flex w-full items-center gap-3">
-            <input
-              className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:border-neutral-900"
-              placeholder="Sök produkt…"
-            />
+          {/* Right: icons aligned with search */}
+          <div className="flex items-center gap-3 sm:self-center">
+            <span className="rounded-md border px-3 py-2 text-sm" aria-label="Favoriter">
+              ♡
+            </span>
 
-            {/* icons always in a row */}
-            <div className="flex items-center gap-3">
-              <span className="rounded-md border px-3 py-2 text-sm" aria-label="Favoriter">
-                ♡
-              </span>
-
-              <Link
-                href="/cart"
-                className="rounded-md border px-3 py-2 text-sm"
-                aria-label="Varukorg"
-              >
-                🛒
-              </Link>
-            </div>
+            <Link
+              href="/cart"
+              className="rounded-md border px-3 py-2 text-sm"
+              aria-label="Varukorg"
+            >
+              🛒
+            </Link>
           </div>
         </div>
 

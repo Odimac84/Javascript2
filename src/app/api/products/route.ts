@@ -10,6 +10,26 @@ import {
 
 export const runtime = "nodejs";
 
+type ProductRow = {
+  id: number;
+  sku: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  image_url: string;
+  price_cents: number;
+  in_stock: number; // 0/1
+  active: number; // 0/1
+  published_at: string; // "YYYY-MM-DD HH:MM:SS"
+  created_at: string;
+};
+
+type ProductResponse = Omit<ProductRow, "in_stock" | "active"> & {
+  in_stock: boolean;
+  active: boolean;
+  categories: ReturnType<typeof getCategoriesForProduct>;
+};
+
 const CreateProductSchema = z.object({
   sku: z.string().min(1),
   name: z.string().min(1),
@@ -18,10 +38,11 @@ const CreateProductSchema = z.object({
   inStock: z.coerce.boolean().optional(),
   active: z.coerce.boolean().optional(),
   categoryIds: z.array(z.coerce.number().int().positive()).optional().default([]),
-  publishedAt: z.string().optional(), // "YYYY-MM-DD HH:MM:SS" eller ISO
+  imageUrl: z.string().url().optional(),
+  publishedAt: z.string().optional(), // ISO eller "YYYY-MM-DD HH:MM:SS"
 });
 
-function toSqliteDateTime(input?: string) {
+function toSqliteDateTime(input?: string): string | null {
   if (!input) return null;
 
   const s = input.trim();
@@ -37,16 +58,29 @@ function toSqliteDateTime(input?: string) {
   )}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
 }
 
+function normalizeProductRow(row: ProductRow): ProductResponse {
+  return {
+    ...row,
+    image_url: row.image_url || PLACEHOLDER_IMAGE,
+    in_stock: row.in_stock === 1,
+    active: row.active === 1,
+    categories: getCategoriesForProduct(row.id),
+  };
+}
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const search = url.searchParams.get("search")?.trim();
   const categorySlug = url.searchParams.get("category")?.trim();
+  const all = url.searchParams.get("all") === "1"; // admin: se även framtida
 
   const where: string[] = [];
   const params: any[] = [];
 
-  // ✅ only publicerade
-  where.push("p.published_at <= datetime('now')");
+  // ✅ Default: bara publicerade
+  if (!all) {
+    where.push("p.published_at <= datetime('now')");
+  }
 
   if (search) {
     where.push("p.name LIKE ?");
@@ -72,21 +106,12 @@ export async function GET(req: Request) {
       p.price_cents, p.in_stock, p.active,
       p.published_at, p.created_at
     FROM products p
-    WHERE ${where.join(" AND ")}
+    ${where.length ? "WHERE " + where.join(" AND ") : ""}
     ORDER BY p.id DESC
   `;
 
-  const rows = db.prepare(sql).all(...params) as any[];
-
-  const normalized = rows.map((p) => ({
-    ...p,
-    image_url: p.image_url || PLACEHOLDER_IMAGE,
-    in_stock: p.in_stock === 1,
-    active: p.active === 1,
-    categories: getCategoriesForProduct(p.id),
-  }));
-
-  return NextResponse.json(normalized);
+  const rows = db.prepare(sql).all(...params) as ProductRow[];
+  return NextResponse.json(rows.map(normalizeProductRow));
 }
 
 export async function POST(req: Request) {
@@ -107,6 +132,8 @@ export async function POST(req: Request) {
     );
   }
 
+  const imageUrl = parsed.data.imageUrl?.trim() || PLACEHOLDER_IMAGE;
+
   try {
     const info = db
       .prepare(
@@ -125,7 +152,7 @@ export async function POST(req: Request) {
         name,
         slug,
         parsed.data.description?.trim() || null,
-        PLACEHOLDER_IMAGE,
+        imageUrl,
         parsed.data.priceCents,
         parsed.data.inStock === false ? 0 : 1,
         parsed.data.active === false ? 0 : 1,
@@ -136,7 +163,7 @@ export async function POST(req: Request) {
 
     setProductCategories(productId, parsed.data.categoryIds);
 
-    const product = db
+    const row = db
       .prepare(
         `
         SELECT
@@ -148,18 +175,13 @@ export async function POST(req: Request) {
         WHERE id = ?
         `
       )
-      .get(productId) as any;
+      .get(productId) as ProductRow | undefined;
 
-    return NextResponse.json(
-      {
-        ...product,
-        image_url: product.image_url || PLACEHOLDER_IMAGE,
-        in_stock: product.in_stock === 1,
-        active: product.active === 1,
-        categories: getCategoriesForProduct(productId),
-      },
-      { status: 201 }
-    );
+    if (!row) {
+      return NextResponse.json({ error: "Could not create product" }, { status: 400 });
+    }
+
+    return NextResponse.json(normalizeProductRow(row), { status: 201 });
   } catch (e: any) {
     const msg = String(e?.message || "");
     if (msg.includes("UNIQUE") && (msg.includes("products.sku") || msg.includes("sku"))) {
