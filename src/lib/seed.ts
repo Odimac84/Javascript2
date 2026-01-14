@@ -1,7 +1,11 @@
 import Database from "better-sqlite3";
-import { PLACEHOLDER_IMAGE } from "./constants";
 
-const db = new Database("database.sqlite");
+// ✅ använd PNG så Next/Image inte klagar på svg+xml
+const PLACEHOLDER_IMAGE = "https://placehold.co/600x400/png";
+
+const DB_PATH = "database.sqlite";
+
+const db = new Database(DB_PATH);
 db.pragma("journal_mode = WAL");
 db.pragma("foreign_keys = ON");
 
@@ -29,14 +33,14 @@ function slugify(s: string) {
 }
 
 function uniqueSlug(base: string, used: Set<string>) {
-  let slug = slugify(base);
-  if (!used.has(slug)) {
-    used.add(slug);
-    return slug;
+  const root = slugify(base);
+  if (!used.has(root)) {
+    used.add(root);
+    return root;
   }
   let i = 2;
-  while (used.has(`${slug}-${i}`)) i++;
-  const finalSlug = `${slug}-${i}`;
+  while (used.has(`${root}-${i}`)) i++;
+  const finalSlug = `${root}-${i}`;
   used.add(finalSlug);
   return finalSlug;
 }
@@ -60,14 +64,19 @@ function int(rng: () => number, min: number, max: number) {
 }
 
 db.transaction(() => {
-  console.log("🌱 Seeding database (recreate + 20 products + placeholder images)...");
+  console.log("🌱 Seeding database (recreate + products + categories + spots)...");
 
+  // DROP
   db.exec(`
     DROP TABLE IF EXISTS product_categories;
+    DROP TABLE IF EXISTS order_items;
+    DROP TABLE IF EXISTS orders;
     DROP TABLE IF EXISTS products;
     DROP TABLE IF EXISTS categories;
+    DROP TABLE IF EXISTS spots;
   `);
 
+  // CREATE
   db.exec(`
     CREATE TABLE categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -97,9 +106,40 @@ db.transaction(() => {
       FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
       FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
     );
+
+    -- orders (basic)
+    CREATE TABLE orders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      customer_name TEXT,
+      customer_email TEXT,
+      status TEXT NOT NULL DEFAULT 'created',
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE order_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id INTEGER NOT NULL,
+      product_id INTEGER NOT NULL,
+      quantity INTEGER NOT NULL,
+      price_cents INTEGER NOT NULL,
+      FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+      FOREIGN KEY (product_id) REFERENCES products(id)
+    );
+
+    -- ✅ spots: 3 boxes on homepage (>=640/1024)
+    CREATE TABLE spots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      image_url TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX idx_spots_active_sort ON spots(active, sort_order, id);
   `);
 
-  // categories
+  // SEED categories
   const insertCategory = db.prepare(`INSERT INTO categories (name, slug) VALUES (?, ?)`);
   const categories = [
     { name: "Nyheter", slug: "nyheter" },
@@ -114,6 +154,22 @@ db.transaction(() => {
     categoryIds[c.slug] = Number(info.lastInsertRowid);
   }
 
+  // SEED spots (3 st)
+  const insertSpot = db.prepare(
+    `INSERT INTO spots (title, image_url, sort_order, active) VALUES (?, ?, ?, 1)`
+  );
+
+  const spotSeed = [
+    { title: "Lorem ipsum dolor", image_url: PLACEHOLDER_IMAGE, sort_order: 1 },
+    { title: "Lorem ipsum dolor", image_url: PLACEHOLDER_IMAGE, sort_order: 2 },
+    { title: "Lorem ipsum dolor", image_url: PLACEHOLDER_IMAGE, sort_order: 3 },
+  ];
+
+  for (const s of spotSeed) {
+    insertSpot.run(s.title, s.image_url, s.sort_order);
+  }
+
+  // SEED products
   const rng = mulberry32(1337);
 
   const brands = ["Levis", "Nike", "Adidas", "Weekday", "Acne", "Carhartt", "Filippa K"];
@@ -127,7 +183,8 @@ db.transaction(() => {
     INSERT INTO products (
       sku, name, slug, description,
       image_url,
-      price_cents, in_stock, active, published_at
+      price_cents, in_stock, active,
+      published_at
     )
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
@@ -138,7 +195,6 @@ db.transaction(() => {
   `);
 
   const now = new Date();
-
   const publishedOffsetsDays = [0, 1, 2, 3, 5, 6, 7, 10, 14, 21, 30, 45];
 
   for (let i = 1; i <= 20; i++) {
@@ -162,7 +218,9 @@ db.transaction(() => {
     const price = base + int(rng, -50, 150);
     const priceCents = price * 100;
 
-    // publicering: första 12 publicerade, resten blandat (framtid/äldre)
+    // publicering:
+    // - första 12 publicerade (nu / senaste veckor)
+    // - resten mix (framtid + äldre)
     let publishedAt: Date;
     if (i <= 12) {
       const daysAgo = publishedOffsetsDays[(i - 1) % publishedOffsetsDays.length];
@@ -191,7 +249,7 @@ db.transaction(() => {
       name,
       slug,
       description,
-      PLACEHOLDER_IMAGE, // ✅ all products get same image url
+      PLACEHOLDER_IMAGE, // ✅ image for every product
       priceCents,
       inStock,
       active,
@@ -200,16 +258,17 @@ db.transaction(() => {
 
     const productId = Number(info.lastInsertRowid);
 
-    // category rules
+    // Kategorier:
+    // Nyheter = publicerade senaste 7 dagar
     const ageDays = Math.floor((now.getTime() - publishedAt.getTime()) / (1000 * 60 * 60 * 24));
-
     if (ageDays >= 0 && ageDays <= 7) insertPC.run(productId, categoryIds["nyheter"]);
+
     if (i % 3 === 0) insertPC.run(productId, categoryIds["topplistan"]);
     if (i % 5 === 0) insertPC.run(productId, categoryIds["rea"]);
     if (i % 7 === 0) insertPC.run(productId, categoryIds["kampanjer"]);
   }
 
-  console.log("✅ Seed complete: 4 categories, 20 products (placeholder images on all)");
+  console.log("✅ Seed complete: categories, products, spots");
 })();
 
 db.close();

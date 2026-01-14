@@ -2,8 +2,7 @@ import "server-only";
 import { db } from "@/lib/db";
 
 /**
- * Sätter exakt vilka categories en produkt ska ha.
- * Den tar en lista av category IDs och ersätter allt tidigare.
+ * Sätter vilka categories en produkt ska ha.
  */
 export function setProductCategories(productId: number, categoryIds: number[]) {
   const run = db.transaction(() => {

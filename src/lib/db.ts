@@ -103,6 +103,15 @@ CREATE TABLE IF NOT EXISTS order_items (
   FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT
 );
 
+CREATE TABLE IF NOT EXISTS spots (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  image_url TEXT NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_categories_slug ON categories(slug);
 
 CREATE INDEX IF NOT EXISTS idx_products_name ON products(name);
@@ -114,6 +123,7 @@ CREATE INDEX IF NOT EXISTS idx_related_products_product ON related_products(prod
 CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at);
 CREATE INDEX IF NOT EXISTS idx_orders_email ON orders(customer_email);
 CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
+CREATE INDEX IF NOT EXISTS idx_spots_active_sort ON spots(active, sort_order, id);
 `;
 
 db.exec(schema);

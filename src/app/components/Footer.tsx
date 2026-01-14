@@ -30,10 +30,52 @@ function Section({
 
 export default function Footer() {
   return (
-    <footer className="mt-10 border-t">
-      <div className="mx-auto w-full max-w-6xl px-4 py-6">
+    <footer className="mt-10 ">
+      {/* Spots: 2 cols at sm, 4 cols at lg */}
+      <div className="border-t py-6">
+        <div className="mx-auto w-full max-w-6xl px-4">
+          <div
+            className="
+              mx-auto
+              grid
+              w-full
+              max-w-xl
+              grid-cols-1
+              gap-y-4
+              text-sm
+              sm:max-w-[65%]
+              sm:grid-cols-2
+              sm:gap-x-10
+              lg:max-w-[80%]
+              lg:grid-cols-4
+              lg:gap-x-10
+            "
+          >
+            <div className="flex items-center justify-center gap-2 sm:justify-start">
+              <span>🟢</span>
+              <span>Gratis frakt och returer</span>
+            </div>
 
-        {/* MOBILE: accordion */}
+            <div className="flex items-center justify-center gap-2 sm:justify-start">
+              <span>✈️</span>
+              <span>Expressfrakt</span>
+            </div>
+
+            <div className="flex items-center justify-center gap-2 sm:justify-start">
+              <span>🛡️</span>
+              <span>Säkra betalningar</span>
+            </div>
+
+            <div className="flex items-center justify-center gap-2 sm:justify-start">
+              <span>🙂</span>
+              <span>Nyheter varje dag</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* MOBILE: accordion */}
+      <div className="mx-auto w-full max-w-6xl px-4 py-6">  
         <div className="mt-6 sm:hidden">
           <Section title="Shopping">
             <ul className="space-y-1">
