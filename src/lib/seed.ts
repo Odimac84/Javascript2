@@ -139,7 +139,6 @@ db.transaction(() => {
     CREATE INDEX idx_spots_active_sort ON spots(active, sort_order, id);
   `);
 
-  // SEED categories
   const insertCategory = db.prepare(`INSERT INTO categories (name, slug) VALUES (?, ?)`);
   const categories = [
     { name: "Nyheter", slug: "nyheter" },
@@ -154,7 +153,7 @@ db.transaction(() => {
     categoryIds[c.slug] = Number(info.lastInsertRowid);
   }
 
-  // SEED spots (3 st)
+
   const insertSpot = db.prepare(
     `INSERT INTO spots (title, image_url, sort_order, active) VALUES (?, ?, ?, 1)`
   );
@@ -169,7 +168,6 @@ db.transaction(() => {
     insertSpot.run(s.title, s.image_url, s.sort_order);
   }
 
-  // SEED products
   const rng = mulberry32(1337);
 
   const brands = ["Levis", "Nike", "Adidas", "Weekday", "Acne", "Carhartt", "Filippa K"];
@@ -218,9 +216,6 @@ db.transaction(() => {
     const price = base + int(rng, -50, 150);
     const priceCents = price * 100;
 
-    // publicering:
-    // - första 12 publicerade (nu / senaste veckor)
-    // - resten mix (framtid + äldre)
     let publishedAt: Date;
     if (i <= 12) {
       const daysAgo = publishedOffsetsDays[(i - 1) % publishedOffsetsDays.length];
@@ -249,7 +244,7 @@ db.transaction(() => {
       name,
       slug,
       description,
-      PLACEHOLDER_IMAGE, // ✅ image for every product
+      PLACEHOLDER_IMAGE, 
       priceCents,
       inStock,
       active,
@@ -258,8 +253,6 @@ db.transaction(() => {
 
     const productId = Number(info.lastInsertRowid);
 
-    // Kategorier:
-    // Nyheter = publicerade senaste 7 dagar
     const ageDays = Math.floor((now.getTime() - publishedAt.getTime()) / (1000 * 60 * 60 * 24));
     if (ageDays >= 0 && ageDays <= 7) insertPC.run(productId, categoryIds["nyheter"]);
 

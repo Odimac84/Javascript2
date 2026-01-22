@@ -27,15 +27,12 @@ export default async function ProductPage({
   return (
     <main className="py-6">
 
-      {/* 🔹 MOBILE TITLE */}
       <h1 className="mb-4 text-xl font-semibold sm:hidden">
         {product.name}
       </h1>
 
-      {/* 🔹 PRODUCT GRID */}
       <section className="grid gap-6 sm:grid-cols-2">
 
-        {/* IMAGE */}
         <div className="rounded-xl p-3">
           <Image
             src={normalizeImageUrl(product.image_url)}
@@ -47,10 +44,8 @@ export default async function ProductPage({
           />
         </div>
 
-        {/* INFO */}
         <div className="rounded-xl p-4">
 
-          {/* DESKTOP TITLE */}
           <h1 className="hidden text-xl font-semibold sm:block">
             {product.name}
           </h1>
@@ -70,7 +65,6 @@ export default async function ProductPage({
             Lägg i varukorg
           </button>
 
-          {/* CATEGORIES */}
           {product.categories.length > 0 && (
             <div className="mt-6 border-t pt-4">
               <div className="text-xs font-medium text-neutral-700">
@@ -91,14 +85,12 @@ export default async function ProductPage({
         </div>
       </section>
 
-      {/* 🔹 RELATED PRODUCTS */}
         <section className="mt-12 hidden sm:block">
             <h2 className="mb-4 text-center text-base font-semibold">
                 Liknande produkter
             </h2>
 
             <div className="rounded-xl p-2">
-                {/* exakt 3 i rad, ingen wrap */}
                 <div className="flex gap-3 overflow-x-auto">
                 {related.slice(0, 3).map((p) => (
                     <div key={p.id} className="w-[32%] flex-shrink-0">

@@ -11,9 +11,9 @@ export type ProductRow = {
   description: string | null;
   image_url: string;
   price_cents: number;
-  in_stock: number; // 0/1
-  active: number; // 0/1
-  published_at: string; // "YYYY-MM-DD HH:MM:SS"
+  in_stock: number; 
+  active: number; 
+  published_at: string; 
   created_at: string;
 };
 
@@ -29,9 +29,7 @@ export type ProductWithCategories = Omit<ProductRow, "in_stock" | "active"> & {
   categories: CategoryRow[];
 };
 
-/**
- * Helpers
- */
+
 function normalize(row: ProductRow): ProductWithCategories {
   return {
     ...row,
@@ -58,9 +56,7 @@ export function toSqliteDateTime(input?: string): string | null {
   )}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
 }
 
-/**
- * Categories för en produkt
- */
+
 export function getCategoriesForProduct(productId: number): CategoryRow[] {
   return db
     .prepare(
@@ -75,9 +71,7 @@ export function getCategoriesForProduct(productId: number): CategoryRow[] {
     .all(productId) as CategoryRow[];
 }
 
-/**
- * CREAT
- */
+
 export function createProduct(data: {
   sku: string;
   name: string;
@@ -137,9 +131,6 @@ export function createProduct(data: {
   return row ? normalize(row) : null;
 }
 
-/**
- * UPDATE NAME
- */
 export function updateProductName(productId: number, newName: string) {
   const cleanName = newName.trim();
   const newSlug = generateUniqueSlug("products", cleanName, productId);
@@ -169,9 +160,6 @@ export function updateProductName(productId: number, newName: string) {
   return row ? normalize(row) : null;
 }
 
-/**
- * Hämta en produkt via slug (för produktsidan)
- */
 export function getProductBySlug(slug: string, opts?: { all?: boolean }) {
   const all = opts?.all === true;
 
@@ -194,9 +182,6 @@ export function getProductBySlug(slug: string, opts?: { all?: boolean }) {
   return row ? normalize(row) : null;
 }
 
-/**
- * Liknande produkter:
- */
 export function getRelatedProducts(currentProductId: number, limit = 4) {
   const rows = db
     .prepare(

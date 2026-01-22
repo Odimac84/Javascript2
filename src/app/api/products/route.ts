@@ -18,9 +18,9 @@ type ProductRow = {
   description: string | null;
   image_url: string;
   price_cents: number;
-  in_stock: number; // 0/1
-  active: number; // 0/1
-  published_at: string; // "YYYY-MM-DD HH:MM:SS"
+  in_stock: number; 
+  active: number; 
+  published_at: string; 
   created_at: string;
 };
 
@@ -39,7 +39,7 @@ const CreateProductSchema = z.object({
   active: z.coerce.boolean().optional(),
   categoryIds: z.array(z.coerce.number().int().positive()).optional().default([]),
   imageUrl: z.string().url().optional(),
-  publishedAt: z.string().optional(), // ISO eller "YYYY-MM-DD HH:MM:SS"
+  publishedAt: z.string().optional(), 
 });
 
 function toSqliteDateTime(input?: string): string | null {
@@ -72,12 +72,11 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const search = url.searchParams.get("search")?.trim();
   const categorySlug = url.searchParams.get("category")?.trim();
-  const all = url.searchParams.get("all") === "1"; // admin: se även framtida
+  const all = url.searchParams.get("all") === "1"; 
 
   const where: string[] = [];
   const params: any[] = [];
 
-  // ✅ Default: bara publicerade
   if (!all) {
     where.push("p.published_at <= datetime('now')");
   }

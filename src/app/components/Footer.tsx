@@ -31,7 +31,6 @@ function Section({
 export default function Footer() {
   return (
     <footer className="mt-10 ">
-      {/* Spots: 2 cols at sm, 4 cols at lg */}
       <div className="border-t py-6">
         <div className="mx-auto w-full max-w-6xl px-4">
           <div
@@ -74,7 +73,6 @@ export default function Footer() {
         </div>
       </div>
       
-      {/* MOBILE: accordion */}
       <div className="mx-auto w-full max-w-6xl px-4 py-6">  
         <div className="mt-6 sm:hidden">
           <Section title="Shopping">
@@ -103,7 +101,6 @@ export default function Footer() {
           </Section>
         </div>
 
-        {/* SM+ : open menus in 3 columns */}
         <div className="mt-8 hidden gap-8 text-sm sm:grid sm:grid-cols-3">
           <div>
             <div className="font-medium">Shopping</div>

@@ -20,7 +20,6 @@ export default function ProductCard({
 
   return (
     <Link href={`/products/${p.slug}`} className="block rounded-xl border bg-white p-3">
-      {/* 🔒 FIXED IMAGE BOX */}
       <div
   style={{ height: 160 }}
   className="relative overflow-hidden rounded-lg border"
@@ -47,8 +46,6 @@ export default function ProductCard({
           ♡
         </span>
       </div>
-
-      {/* INFO */}
       <div className="mt-3 flex items-end justify-between gap-3">
         <div className="min-w-0">
           <div className="truncate text-sm font-medium">{p.name}</div>

@@ -57,7 +57,6 @@ export async function POST(req: Request) {
 
   const { customer, address, newsletterOptIn, items } = parsed.data;
 
-  // 1) Hämta produkter som behövs (servern räknar priset)
   const uniqueIds = Array.from(new Set(items.map((i) => i.productId)));
   const placeholders = uniqueIds.map(() => "?").join(",");
 
@@ -79,7 +78,6 @@ export async function POST(req: Request) {
 
   const productMap = new Map(products.map((p) => [p.id, p]));
 
-  // 2) Validera att alla produkter finns + är köpbara
   for (const it of items) {
     const p = productMap.get(it.productId);
     if (!p) {
@@ -94,11 +92,8 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-    // Om du vill: blockera köp om in_stock=0
-    // if (p.in_stock !== 1) { ... }
   }
 
-  // 3) Räkna totals + bygg order_items snapshot
   const computedItems = items.map((it) => {
     const p = productMap.get(it.productId)!;
     const unit = p.price_cents;
@@ -114,7 +109,6 @@ export async function POST(req: Request) {
 
   const totalCents = computedItems.reduce((sum, it) => sum + it.lineTotalCents, 0);
 
-  // 4) Skriv order + order_items i en transaktion
   const create = db.transaction(() => {
     const orderInfo = db
       .prepare(
@@ -173,7 +167,6 @@ export async function POST(req: Request) {
 
   const orderId = create();
 
-  // 5) Returnera order + items
   const order = db
     .prepare(
       `
