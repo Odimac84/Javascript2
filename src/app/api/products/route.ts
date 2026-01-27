@@ -3,12 +3,20 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { generateUniqueSlug } from "@/lib/slug";
 import { PLACEHOLDER_IMAGE } from "@/lib/constants";
-import {
-  getCategoriesForProduct,
-  setProductCategories,
-} from "@/lib/repo/productCategories.repo";
+import { getCategoriesForProduct, setProductCategories } from "@/lib/repo/productCategories.repo";
 
 export const runtime = "nodejs";
+
+const zBool = z.preprocess((v) => {
+  if (typeof v === "boolean") return v;
+  if (typeof v === "number") return v === 1;
+  if (typeof v === "string") {
+    const s = v.trim().toLowerCase();
+    if (["true", "1", "yes", "on"].includes(s)) return true;
+    if (["false", "0", "no", "off"].includes(s)) return false;
+  }
+  return v;
+}, z.boolean());
 
 type ProductRow = {
   id: number;
@@ -18,9 +26,9 @@ type ProductRow = {
   description: string | null;
   image_url: string;
   price_cents: number;
-  in_stock: number; 
-  active: number; 
-  published_at: string; 
+  in_stock: number;
+  active: number;
+  published_at: string;
   created_at: string;
 };
 
@@ -35,11 +43,11 @@ const CreateProductSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
   priceCents: z.coerce.number().int().nonnegative(),
-  inStock: z.coerce.boolean().optional(),
-  active: z.coerce.boolean().optional(),
+  inStock: zBool.optional(),
+  active: zBool.optional(),
   categoryIds: z.array(z.coerce.number().int().positive()).optional().default([]),
   imageUrl: z.string().url().optional(),
-  publishedAt: z.string().optional(), 
+  publishedAt: z.string().optional(),
 });
 
 function toSqliteDateTime(input?: string): string | null {
@@ -72,7 +80,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const search = url.searchParams.get("search")?.trim();
   const categorySlug = url.searchParams.get("category")?.trim();
-  const all = url.searchParams.get("all") === "1"; 
+  const all = url.searchParams.get("all") === "1";
 
   const where: string[] = [];
   const params: any[] = [];

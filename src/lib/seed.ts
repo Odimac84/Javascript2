@@ -1,6 +1,5 @@
 import Database from "better-sqlite3";
 
-// ✅ använd PNG så Next/Image inte klagar på svg+xml
 const PLACEHOLDER_IMAGE = "https://placehold.co/600x400/png";
 
 const DB_PATH = "database.sqlite";
@@ -9,7 +8,6 @@ const db = new Database(DB_PATH);
 db.pragma("journal_mode = WAL");
 db.pragma("foreign_keys = ON");
 
-// helpers
 function pad(n: number) {
   return String(n).padStart(2, "0");
 }
@@ -45,7 +43,6 @@ function uniqueSlug(base: string, used: Set<string>) {
   return finalSlug;
 }
 
-// deterministic RNG so seed is stable
 function mulberry32(seed: number) {
   return function () {
     let t = (seed += 0x6d2b79f5);
@@ -64,19 +61,22 @@ function int(rng: () => number, min: number, max: number) {
 }
 
 db.transaction(() => {
-  console.log("🌱 Seeding database (recreate + products + categories + spots)...");
+  console.log("Seeding database (recreate + products + categories + spots + orders schema)...");
 
-  // DROP
   db.exec(`
     DROP TABLE IF EXISTS product_categories;
+    DROP TABLE IF EXISTS related_products;
+    DROP TABLE IF EXISTS product_images;
+
     DROP TABLE IF EXISTS order_items;
     DROP TABLE IF EXISTS orders;
+    DROP TABLE IF EXISTS customers;
+
     DROP TABLE IF EXISTS products;
     DROP TABLE IF EXISTS categories;
     DROP TABLE IF EXISTS spots;
   `);
 
-  // CREATE
   db.exec(`
     CREATE TABLE categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -107,26 +107,52 @@ db.transaction(() => {
       FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
     );
 
-    -- orders (basic)
+    CREATE TABLE customers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL UNIQUE,
+      name TEXT,
+      password_hash TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE orders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      customer_name TEXT,
-      customer_email TEXT,
-      status TEXT NOT NULL DEFAULT 'created',
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      customer_id INTEGER,
+
+      status TEXT NOT NULL DEFAULT 'pending',
+      currency TEXT NOT NULL DEFAULT 'SEK',
+      total_cents INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+
+      customer_first_name TEXT NOT NULL,
+      customer_last_name TEXT NOT NULL,
+      customer_email TEXT NOT NULL,
+
+      shipping_street TEXT NOT NULL,
+      shipping_postal_code TEXT NOT NULL,
+      shipping_city TEXT NOT NULL,
+      shipping_country TEXT NOT NULL DEFAULT 'SE',
+
+      newsletter_opt_in INTEGER NOT NULL DEFAULT 0,
+
+      FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
     );
 
     CREATE TABLE order_items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       order_id INTEGER NOT NULL,
       product_id INTEGER NOT NULL,
+
+      product_name TEXT NOT NULL,
+      unit_price_cents INTEGER NOT NULL,
+
       quantity INTEGER NOT NULL,
-      price_cents INTEGER NOT NULL,
+      line_total_cents INTEGER NOT NULL,
+
       FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
-      FOREIGN KEY (product_id) REFERENCES products(id)
+      FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT
     );
 
-    -- ✅ spots: 3 boxes on homepage (>=640/1024)
     CREATE TABLE spots (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
@@ -152,7 +178,6 @@ db.transaction(() => {
     const info = insertCategory.run(c.name, c.slug);
     categoryIds[c.slug] = Number(info.lastInsertRowid);
   }
-
 
   const insertSpot = db.prepare(
     `INSERT INTO spots (title, image_url, sort_order, active) VALUES (?, ?, ?, 1)`
@@ -244,7 +269,7 @@ db.transaction(() => {
       name,
       slug,
       description,
-      PLACEHOLDER_IMAGE, 
+      PLACEHOLDER_IMAGE,
       priceCents,
       inStock,
       active,
@@ -261,7 +286,7 @@ db.transaction(() => {
     if (i % 7 === 0) insertPC.run(productId, categoryIds["kampanjer"]);
   }
 
-  console.log("✅ Seed complete: categories, products, spots");
+  console.log(" Seed complete: categories, products, spots + (orders schema aligned)");
 })();
 
 db.close();

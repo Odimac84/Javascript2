@@ -4,6 +4,17 @@ import { db } from "@/lib/db";
 
 export const runtime = "nodejs";
 
+const zBool = z.preprocess((v) => {
+  if (typeof v === "boolean") return v;
+  if (typeof v === "number") return v === 1;
+  if (typeof v === "string") {
+    const s = v.trim().toLowerCase();
+    if (["true", "1", "yes", "on"].includes(s)) return true;
+    if (["false", "0", "no", "off"].includes(s)) return false;
+  }
+  return v;
+}, z.boolean());
+
 const CreateOrderSchema = z.object({
   customer: z.object({
     firstName: z.string().min(1),
@@ -16,7 +27,7 @@ const CreateOrderSchema = z.object({
     city: z.string().min(1),
     country: z.string().min(1).optional().default("SE"),
   }),
-  newsletterOptIn: z.coerce.boolean().optional().default(false),
+  newsletterOptIn: zBool.optional().default(false),
   items: z
     .array(
       z.object({
@@ -33,6 +44,7 @@ export async function GET() {
       `
       SELECT
         id,
+        customer_id,
         status,
         currency,
         total_cents,
@@ -110,16 +122,37 @@ export async function POST(req: Request) {
   const totalCents = computedItems.reduce((sum, it) => sum + it.lineTotalCents, 0);
 
   const create = db.transaction(() => {
+    const email = customer.email.trim().toLowerCase();
+    const fullName = `${customer.firstName.trim()} ${customer.lastName.trim()}`.trim();
+
+    const existing = db
+      .prepare(`SELECT id FROM customers WHERE email = ?`)
+      .get(email) as { id: number } | undefined;
+
+    let customerId: number;
+
+    if (existing) {
+      customerId = existing.id;
+      db.prepare(`UPDATE customers SET name = ? WHERE id = ?`).run(fullName || null, customerId);
+    } else {
+      const info = db
+        .prepare(`INSERT INTO customers (email, name) VALUES (?, ?)`)
+        .run(email, fullName || null);
+      customerId = Number(info.lastInsertRowid);
+    }
+
     const orderInfo = db
       .prepare(
         `
         INSERT INTO orders (
+          customer_id,
           status, currency, total_cents,
           customer_first_name, customer_last_name, customer_email,
           shipping_street, shipping_postal_code, shipping_city, shipping_country,
           newsletter_opt_in
         )
         VALUES (
+          ?,
           'pending', 'SEK', ?,
           ?, ?, ?,
           ?, ?, ?, ?,
@@ -128,10 +161,11 @@ export async function POST(req: Request) {
         `
       )
       .run(
+        customerId,
         totalCents,
         customer.firstName.trim(),
         customer.lastName.trim(),
-        customer.email.trim().toLowerCase(),
+        email,
         address.street.trim(),
         address.postalCode.trim(),
         address.city.trim(),
@@ -141,6 +175,7 @@ export async function POST(req: Request) {
 
     const orderId = Number(orderInfo.lastInsertRowid);
 
+    // 4) Insert order items
     const insertItem = db.prepare(
       `
       INSERT INTO order_items (
@@ -171,7 +206,7 @@ export async function POST(req: Request) {
     .prepare(
       `
       SELECT
-        id, status, currency, total_cents, created_at,
+        id, customer_id, status, currency, total_cents, created_at,
         customer_first_name, customer_last_name, customer_email,
         shipping_street, shipping_postal_code, shipping_city, shipping_country,
         newsletter_opt_in
