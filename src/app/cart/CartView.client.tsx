@@ -177,7 +177,7 @@ export default function CartView() {
       <div className="mt-8 flex justify-center">
         <Link
           href="/checkout"
-          className={`inline-flex h-10 min-w-56 items-center justify-center rounded-xl border px-8 text-sm font-medium ${
+          className={`h-12 min-w-64 rounded-md border px-10 text-base font-semibold ${
             items.length === 0 ? "pointer-events-none bg-gray-100 text-gray-500" : "bg-white text-black"
           }`}
         >

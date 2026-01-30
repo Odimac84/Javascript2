@@ -64,8 +64,16 @@ export async function GET() {
 export async function POST(req: Request) {
   const parsed = CreateOrderSchema.safeParse(await req.json());
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
-  }
+  return NextResponse.json(
+    {
+      error: {
+        issues: parsed.error.issues,
+        flattened: parsed.error.flatten(), 
+      },
+    },
+    { status: 400 }
+  );
+}
 
   const { customer, address, newsletterOptIn, items } = parsed.data;
 
@@ -175,7 +183,6 @@ export async function POST(req: Request) {
 
     const orderId = Number(orderInfo.lastInsertRowid);
 
-    // 4) Insert order items
     const insertItem = db.prepare(
       `
       INSERT INTO order_items (
