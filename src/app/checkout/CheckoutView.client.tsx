@@ -26,9 +26,7 @@ function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 }
 
-// inline style -> kan inte försvinna pga annan CSS
-function inputStyle(hasError: boolean): React.CSSProperties {
-  if (!hasError) return {};
+function errorInputStyle(): React.CSSProperties {
   return {
     borderColor: "#ef4444",
     boxShadow: "0 0 0 2px rgba(239, 68, 68, 0.45)",
@@ -71,7 +69,7 @@ function TextInput({
     <>
       <input
         className={`h-10 rounded-md border px-3 text-sm outline-none ${className}`}
-        style={{ ...(style ?? {}), ...(error ? inputStyle(true) : {}) }}
+        style={{ ...(style ?? {}), ...(error ? errorInputStyle() : {}) }}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
@@ -99,7 +97,7 @@ export default function CheckoutView() {
   const [showGenericError, setShowGenericError] = useState(false);
 
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState<number | null>(null);
+  const [successOrderId, setSuccessOrderId] = useState<number | null>(null);
 
   const computed = useMemo(
     () =>
@@ -131,11 +129,8 @@ export default function CheckoutView() {
     if (!form.firstName.trim()) errs.firstName = "Förnamn saknas.";
     if (!form.lastName.trim()) errs.lastName = "Efternamn saknas.";
 
-    if (!form.email.trim()) {
-      errs.email = "E-postadress saknas.";
-    } else if (!isValidEmail(form.email)) {
-      errs.email = "E-postadressen är felaktig (ex: namn@mail.se).";
-    }
+    if (!form.email.trim()) errs.email = "E-postadress saknas.";
+    else if (!isValidEmail(form.email)) errs.email = "E-postadressen är felaktig (ex: namn@mail.se).";
 
     if (!form.street.trim()) errs.street = "Gata saknas.";
     if (!form.postalCode.trim()) errs.postalCode = "Postnummer saknas.";
@@ -188,7 +183,7 @@ export default function CheckoutView() {
 
       const orderId = Number(data?.order?.id || 0);
       clear();
-      setSuccess(orderId);
+      setSuccessOrderId(orderId);
     } catch {
       setShowGenericError(true);
     } finally {
@@ -196,17 +191,15 @@ export default function CheckoutView() {
     }
   }
 
-  if (success) {
+  if (successOrderId) {
     return (
       <main className="mx-auto w-full max-w-5xl py-8">
         <h1 className="text-center text-2xl font-semibold">Kassan</h1>
-
         <div className="mx-auto mt-6 max-w-lg rounded-2xl border p-6 text-center">
           <div className="text-lg font-medium">Tack! Din order är skapad.</div>
           <div className="mt-2 text-sm text-gray-600">
-            Ordernummer: <span className="font-medium">{success || "—"}</span>
+            Ordernummer: <span className="font-medium">{successOrderId}</span>
           </div>
-
           <div className="mt-6 flex justify-center gap-3">
             <Link className="rounded-md border px-4 py-2 text-sm font-semibold" href="/">
               Till startsidan
@@ -219,18 +212,17 @@ export default function CheckoutView() {
       </main>
     );
   }
+
   if (items.length === 0) {
     return (
       <main className="mx-auto w-full max-w-5xl py-8">
         <h1 className="text-center text-2xl font-semibold">Kassan</h1>
-
         <div className="mx-auto mt-6 max-w-lg rounded-2xl border p-6 text-center text-sm text-gray-600">
           Varukorgen är tom.{" "}
           <Link className="underline" href="/">
             Fortsätt handla
           </Link>
         </div>
-
         <div className="mt-6 text-center text-sm">
           <Link className="underline text-gray-700" href="/cart">
             Tillbaka till varukorgen
@@ -244,8 +236,8 @@ export default function CheckoutView() {
     <main className="mx-auto w-full max-w-5xl py-8">
       <h1 className="text-center text-2xl font-semibold">Kassan</h1>
 
-      {/* SUMMARY */}
-      <section className="mt-6 sm:block">
+      {/* SUMMARY (tablet/desktop) */}
+      <section className="mt-6 hidden sm:block">
         <div className="overflow-hidden rounded-2xl border">
           <table className="w-full border-collapse text-sm">
             <thead className="bg-gray-100">
@@ -268,56 +260,56 @@ export default function CheckoutView() {
             </tbody>
           </table>
         </div>
-
         <div className="mt-3 text-right text-sm">
           <span className="text-gray-600">Summa: </span>
           <span className="font-medium">{formatSek(subtotalCents)}</span>
         </div>
       </section>
 
+      {/* MOBILE FORM */}
       <section className="mt-8 sm:hidden">
         <div className="rounded-2xl border p-4">
           <div className="text-sm font-medium">Kunduppgifter</div>
 
           <div className="mt-4 grid gap-3">
-            <label className="grid gap-1 text-sm">
+            <div className="grid gap-1 text-sm">
               <span>Förnamn</span>
               <TextInput value={form.firstName} onChange={(v) => set("firstName", v)} error={fieldErrors.firstName} />
-            </label>
+            </div>
 
-            <label className="grid gap-1 text-sm">
+            <div className="grid gap-1 text-sm">
               <span>Efternamn</span>
               <TextInput value={form.lastName} onChange={(v) => set("lastName", v)} error={fieldErrors.lastName} />
-            </label>
+            </div>
 
-            <label className="grid gap-1 text-sm">
+            <div className="grid gap-1 text-sm">
               <span>E-post</span>
               <TextInput value={form.email} onChange={(v) => set("email", v)} error={fieldErrors.email} />
-            </label>
+            </div>
 
             <div className="rounded-xl border p-3">
               <div className="text-xs font-medium">Adress</div>
 
               <div className="mt-3 grid gap-3">
-                <label className="grid gap-1 text-sm">
+                <div className="grid gap-1 text-sm">
                   <span>Gata</span>
                   <TextInput value={form.street} onChange={(v) => set("street", v)} error={fieldErrors.street} />
-                </label>
+                </div>
 
-                <label className="grid gap-1 text-sm">
-                  <span style={{ width: 150 }}>Postnummer</span>
+                <div className="grid gap-1 text-sm">
+                  <span>Postnummer</span>
                   <TextInput
                     value={form.postalCode}
                     onChange={(v) => set("postalCode", v)}
                     error={fieldErrors.postalCode}
                     className="w-3/5"
                   />
-                </label>
+                </div>
 
-                <label className="grid gap-1 text-sm">
+                <div className="grid gap-1 text-sm">
                   <span>Stad</span>
                   <TextInput value={form.city} onChange={(v) => set("city", v)} error={fieldErrors.city} />
-                </label>
+                </div>
               </div>
             </div>
 
@@ -362,110 +354,158 @@ export default function CheckoutView() {
         </div>
       </section>
 
+      {/* TABLET + DESKTOP FORM */}
       <section className="mt-10 hidden sm:block">
-        <div className="rounded-2xl border p-6">
-          <div className="text-sm font-medium">Kunduppgifter</div>
+  <div className="rounded-2xl border p-6">
+    <div className="text-sm font-medium">Kunduppgifter</div>
 
-          <div className="mt-4 grid gap-4">
-            <div className="grid grid-cols-2 gap-4">
-              <label className="grid gap-1 text-sm">
-                <span>Förnamn</span>
-                <TextInput value={form.firstName} onChange={(v) => set("firstName", v)} error={fieldErrors.firstName} className="w-full" />
-              </label>
+    <div style={{ display: "grid", gap: 16, marginTop: 16 }}>
+      {/* Förnamn + Efternamn 50/50 på samma rad */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <div style={{ display: "grid", gap: 6, fontSize: 14 }}>
+          <span>Förnamn</span>
+          <TextInput
+            value={form.firstName}
+            onChange={(v) => set("firstName", v)}
+            error={fieldErrors.firstName}
+            className="w-full"
+          />
+        </div>
 
-              <label className="grid gap-1 text-sm">
-                <span>Efternamn</span>
-                <TextInput value={form.lastName} onChange={(v) => set("lastName", v)} error={fieldErrors.lastName} className="w-full" />
-              </label>
-            </div>
+        <div style={{ display: "grid", gap: 6, fontSize: 14 }}>
+          <span>Efternamn</span>
+          <TextInput
+            value={form.lastName}
+            onChange={(v) => set("lastName", v)}
+            error={fieldErrors.lastName}
+            className="w-full"
+          />
+        </div>
+      </div>
 
-            <label className="grid gap-1 text-sm w-1/2">
-              <span>E-post</span>
-              <TextInput value={form.email} onChange={(v) => set("email", v)} error={fieldErrors.email} className="w-full" />
-            </label>
+      {/* E-post 50% på raden under */}
+      <div style={{ width: "50%" }}>
+        <div style={{ display: "grid", gap: 6, fontSize: 14 }}>
+          <span>E-post</span>
+          <TextInput
+            value={form.email}
+            onChange={(v) => set("email", v)}
+            error={fieldErrors.email}
+            className="w-full"
+          />
+        </div>
+      </div>
 
-            <div className="rounded-xl border p-4">
-              <div className="text-xs font-medium">Adress</div>
+      {/* Adressboxen 50% bredd (som du bad om) */}
+      <div >
+        <div style={{ border: "1px solid #000", borderRadius: 12, padding: 16 }}>
+          <div style={{ fontSize: 12, fontWeight: 600 }}>Adress</div>
 
-              <div className="mt-4 grid gap-4">
-                <div className="grid gap-1 text-sm " style={{ maxWidth: "60%", minWidth: "500px" }}>
-                  <span>Gata</span>
-                  <div className="w-full lg:w-3/5">
-                    <TextInput
-                      value={form.street}
-                      onChange={(v) => set("street", v)}
-                      error={fieldErrors.street}
-                      className="w-full"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid gap-1 text-sm">
-                  <span>Postnummer</span>
-                  <div style={{ width: 150 }}>
-                    <TextInput
-                      value={form.postalCode}
-                      onChange={(v) => set("postalCode", v)}
-                      error={fieldErrors.postalCode}
-                      className="w-full"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid gap-1 text-sm">
-                  <span>Stad</span>
-                  <div style={{ width: 200 }}>
-                    <TextInput
-                      value={form.city}
-                      onChange={(v) => set("city", v)}
-                      error={fieldErrors.city}
-                      className="w-full"
-                    />
-                  </div>
-                </div>
+          <div style={{ display: "grid", gap: 16, marginTop: 16 }}>
+            {/* Gata: din inline-lösning */}
+            <div style={{ display: "grid", gap: 6, fontSize: 14 }}>
+              <span>Gata</span>
+              <div style={{ maxWidth: "60%", minWidth: "min(500px, 100%)" }}>
+                <TextInput
+                  value={form.street}
+                  onChange={(v) => set("street", v)}
+                  error={fieldErrors.street}
+                  className="w-full"
+                />
               </div>
             </div>
 
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={form.newsletterOptIn}
-                onChange={(e) => set("newsletterOptIn", e.target.checked)}
-              />
-              <span>Jag vill ta emot nyhetsbrev</span>
-            </label>
-
-            <label className={`flex items-center gap-2 text-sm ${fieldErrors.acceptTerms ? "text-red-700" : ""}`}>
-              <input
-                type="checkbox"
-                checked={form.acceptTerms}
-                onChange={(e) => set("acceptTerms", e.target.checked)}
-              />
-              <span>Jag har läst och accepterar villkoren</span>
-            </label>
-            {fieldErrors.acceptTerms && <div className="text-xs text-red-600">{fieldErrors.acceptTerms}</div>}
-
-            {showGenericError && (
-              <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                Kontrollera de markerade fälten och försök igen.
+            {/* Postnummer 150px */}
+            <div style={{ display: "grid", gap: 6, fontSize: 14 }}>
+              <span>Postnummer</span>
+              <div style={{ width: 150 }}>
+                <TextInput
+                  value={form.postalCode}
+                  onChange={(v) => set("postalCode", v)}
+                  error={fieldErrors.postalCode}
+                  className="w-full"
+                />
               </div>
-            )}
+            </div>
 
-            <div className="flex justify-center pt-2">
-              <button
-                type="button"
-                onClick={submit}
-                disabled={loading}
-                className={`h-12 min-w-64 rounded-md border px-10 text-base font-semibold ${
-                  loading ? "bg-gray-100 text-gray-500" : "bg-white text-black"
-                }`}
-              >
-                {loading ? "Köper..." : "Köp"}
-              </button>
+            {/* Stad 200px */}
+            <div style={{ display: "grid", gap: 6, fontSize: 14 }}>
+              <span>Stad</span>
+              <div style={{ width: 200 }}>
+                <TextInput
+                  value={form.city}
+                  onChange={(v) => set("city", v)}
+                  error={fieldErrors.city}
+                  className="w-full"
+                />
+              </div>
             </div>
           </div>
         </div>
-      </section>
+      </div>
+
+      {/* Checkboxes */}
+      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
+        <input
+          type="checkbox"
+          checked={form.newsletterOptIn}
+          onChange={(e) => set("newsletterOptIn", e.target.checked)}
+        />
+        <span>Jag vill ta emot nyhetsbrev</span>
+      </label>
+
+      <label
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          fontSize: 14,
+          color: fieldErrors.acceptTerms ? "#b91c1c" : "inherit",
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={form.acceptTerms}
+          onChange={(e) => set("acceptTerms", e.target.checked)}
+        />
+        <span>Jag har läst och accepterar villkoren</span>
+      </label>
+      {fieldErrors.acceptTerms && (
+        <div style={{ fontSize: 12, color: "#dc2626" }}>{fieldErrors.acceptTerms}</div>
+      )}
+
+      {showGenericError && (
+        <div style={{ border: "1px solid #fecaca", background: "#fef2f2", padding: 12, fontSize: 14, color: "#b91c1c", borderRadius: 8 }}>
+          Kontrollera de markerade fälten och försök igen.
+        </div>
+      )}
+
+      {/* Större knapp */}
+      <div style={{ display: "flex", justifyContent: "center", paddingTop: 8 }}>
+        <button
+          type="button"
+          onClick={submit}
+          disabled={loading}
+          style={{
+            height: 48,
+            minWidth: 256,
+            border: "1px solid #000",
+            borderRadius: 6,
+            padding: "0 40px",
+            fontSize: 16,
+            fontWeight: 600,
+            background: loading ? "#f3f4f6" : "#fff",
+            color: loading ? "#6b7280" : "#000",
+            cursor: loading ? "not-allowed" : "pointer",
+          }}
+        >
+          {loading ? "Köper..." : "Köp"}
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
 
       <div className="mt-6 text-center text-sm">
         <Link className="underline text-gray-700" href="/cart">

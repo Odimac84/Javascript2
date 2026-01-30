@@ -5,7 +5,6 @@ export const runtime = "nodejs";
 
 function getIdFromUrl(req: Request) {
   const url = new URL(req.url);
-  // /api/orders/1  -> ["", "api", "orders", "1"]
   const parts = url.pathname.split("/").filter(Boolean);
   const last = parts.at(-1) ?? "";
   const raw = last.trim();
