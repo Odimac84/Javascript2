@@ -258,7 +258,7 @@ db.transaction(() => {
       }
     }
 
-    const sku = `SKU-${String(i).padStart(3, "0")}`;
+    const sku = `SKU${String(i).padStart(3, "0")}`;
     const description = `${name} från ${brand}. Material: ${material}.`;
 
     const inStock = rng() < 0.9 ? 1 : 0;

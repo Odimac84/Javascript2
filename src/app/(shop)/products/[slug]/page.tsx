@@ -28,15 +28,20 @@ export default async function ProductPage({
       <h1 className="mb-4 text-xl font-semibold sm:hidden">{product.name}</h1>
 
       <section className="grid gap-6 sm:grid-cols-2">
-        <div className="rounded-xl p-3">
+        <div
+          className="relative w-full overflow-hidden rounded-xl border bg-gray-100"
+          style={{ aspectRatio: "3 / 2" }} 
+        >
           <Image
             src={normalizeImageUrl(product.image_url)}
             alt={product.name}
-            width={600}
-            height={800}
-            className="w-full rounded-lg"
+            fill
+            className="object-contain"
+            sizes="(max-width: 768px) 100vw, 600px"
+            priority
           />
         </div>
+
 
         <div className="rounded-xl p-4">
           <h1 className="hidden text-xl font-semibold sm:block">

@@ -1,7 +1,7 @@
 import Image from "next/image";
 import ProductCard from "@/components/ProductCard";
 import { PLACEHOLDER_IMAGE } from "@/lib/constants";
-import { getProducts } from "@/lib/api";
+import { getProducts } from "@/lib/api.server";
 import { db } from "@/lib/db";
 
 type SpotRow = {

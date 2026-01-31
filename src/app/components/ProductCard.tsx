@@ -23,11 +23,13 @@ export default function ProductCard({
     <div className="rounded-xl border bg-white p-3">
       <Link href={`/products/${p.slug}`} className="block">
         <div className="overflow-hidden rounded-lg border">
-          <div className="relative aspect-[3/2]">
+          <div
+            className="relative w-full overflow-hidden rounded-xl border bg-gray-100 "
+            style={{ aspectRatio: "3 / 2" }}>
             <img
               src={src}
               alt={p.name}
-              className="h-full w-full object-cover"
+              className="absolute inset-0 h-full w-full object-contain bg-gray-100"
               loading="lazy"
             />
 

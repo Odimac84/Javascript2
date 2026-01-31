@@ -1,5 +1,5 @@
 import ProductCard from "@/components/ProductCard";
-import { getProducts } from "@/lib/api";
+import { getProducts } from "@/lib/api.server";
 
 export const runtime = "nodejs";
 

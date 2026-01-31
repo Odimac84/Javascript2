@@ -360,7 +360,6 @@ export default function CheckoutView() {
     <div className="text-sm font-medium">Kunduppgifter</div>
 
     <div style={{ display: "grid", gap: 16, marginTop: 16 }}>
-      {/* Förnamn + Efternamn 50/50 på samma rad */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         <div style={{ display: "grid", gap: 6, fontSize: 14 }}>
           <span>Förnamn</span>
@@ -382,8 +381,6 @@ export default function CheckoutView() {
           />
         </div>
       </div>
-
-      {/* E-post 50% på raden under */}
       <div style={{ width: "50%" }}>
         <div style={{ display: "grid", gap: 6, fontSize: 14 }}>
           <span>E-post</span>
@@ -396,13 +393,11 @@ export default function CheckoutView() {
         </div>
       </div>
 
-      {/* Adressboxen 50% bredd (som du bad om) */}
       <div >
         <div style={{ border: "1px solid #000", borderRadius: 12, padding: 16 }}>
           <div style={{ fontSize: 12, fontWeight: 600 }}>Adress</div>
 
           <div style={{ display: "grid", gap: 16, marginTop: 16 }}>
-            {/* Gata: din inline-lösning */}
             <div style={{ display: "grid", gap: 6, fontSize: 14 }}>
               <span>Gata</span>
               <div style={{ maxWidth: "60%", minWidth: "min(500px, 100%)" }}>
@@ -414,8 +409,6 @@ export default function CheckoutView() {
                 />
               </div>
             </div>
-
-            {/* Postnummer 150px */}
             <div style={{ display: "grid", gap: 6, fontSize: 14 }}>
               <span>Postnummer</span>
               <div style={{ width: 150 }}>
@@ -428,7 +421,6 @@ export default function CheckoutView() {
               </div>
             </div>
 
-            {/* Stad 200px */}
             <div style={{ display: "grid", gap: 6, fontSize: 14 }}>
               <span>Stad</span>
               <div style={{ width: 200 }}>
@@ -444,7 +436,6 @@ export default function CheckoutView() {
         </div>
       </div>
 
-      {/* Checkboxes */}
       <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
         <input
           type="checkbox"
