@@ -50,17 +50,18 @@ function TrashButton({ onClick }: { onClick: () => void }) {
 export default function CartView() {
   const { state, remove, subtotalCents, setQty } = useCart();
   const items = state.items;
+  const hasItems = items.length > 0;
 
   return (
     <main className="mx-auto w-full max-w-5xl py-8">
       <h1 className="text-center text-2xl font-semibold">Varukorgen</h1>
 
-      {/* MOBIL  kolumn */}
+      {/* ✅ MOBIL (< 640px): boxar i kolumn */}
       <section className="mt-6 sm:hidden">
-        {items.length === 0 ? (
+        {!hasItems ? (
           <div className="rounded-2xl border p-4 text-sm text-gray-600">
             Din varukorg är tom.{" "}
-            <Link className="underline" href="/">
+            <Link className="underline font-bold" href="/">
               Fortsätt handla
             </Link>
           </div>
@@ -80,9 +81,7 @@ export default function CartView() {
                       ) : (
                         <div className="font-medium">{it.name}</div>
                       )}
-                      <div className="mt-1 text-sm text-gray-600">
-                        {formatSek(it.unitPriceCents)}
-                      </div>
+                      <div className="mt-1 text-sm text-gray-600">{formatSek(it.unitPriceCents)}</div>
                     </div>
 
                     <div className="text-right">
@@ -100,13 +99,9 @@ export default function CartView() {
             })}
           </div>
         )}
-        <div className="mt-3 text-right text-sm">
-          <span className="text-gray-600">Summa: </span>
-          <span className="font-medium">{formatSek(subtotalCents)}</span>
-        </div>
       </section>
 
-      {/* TABLET / DESKTOP  tabell */}
+      {/* ✅ TABLET + DESKTOP (>= 640px): tabell */}
       <section className="mt-6 hidden sm:block">
         <div className="overflow-hidden rounded-2xl border">
           <table className="w-full border-collapse text-sm">
@@ -121,11 +116,11 @@ export default function CartView() {
             </thead>
 
             <tbody>
-              {items.length === 0 ? (
+              {!hasItems ? (
                 <tr>
                   <td className="px-3 py-6 text-gray-600" colSpan={5}>
                     Din varukorg är tom.{" "}
-                    <Link className="underline" href="/">
+                    <Link className="underline font-bold" href="/">
                       Fortsätt handla
                     </Link>
                   </td>
@@ -147,11 +142,7 @@ export default function CartView() {
                       </td>
 
                       <td className="px-3 py-3 align-middle">
-                        <QtySelect
-                          value={it.qty}
-                          onChange={(n) => setQty(it.productId, n)}
-                          max={10}
-                        />
+                        <QtySelect value={it.qty} onChange={(n) => setQty(it.productId, n)} max={10} />
                       </td>
 
                       <td className="px-3 py-3 align-middle">{formatSek(it.unitPriceCents)}</td>
@@ -168,22 +159,25 @@ export default function CartView() {
           </table>
         </div>
 
-        <div className="mt-3 text-right text-sm">
-          <span className="text-gray-600">Summa: </span>
-          <span className="font-medium">{formatSek(subtotalCents)}</span>
-        </div>
+        {hasItems && (
+          <div className="mt-3 text-right text-sm">
+            <span className="text-gray-600">Summa: </span>
+            <span className="font-medium">{formatSek(subtotalCents)}</span>
+          </div>
+        )}
       </section>
 
-      <div className="mt-8 flex justify-center">
-        <Link
-          href="/checkout"
-          className={`h-12 min-w-64 rounded-md border px-10 text-base font-semibold ${
-            items.length === 0 ? "pointer-events-none bg-gray-100 text-gray-500" : "bg-white text-black"
-          }`}
-        >
-          Till kassan
-        </Link>
-      </div>
+      {/* ✅ CTA: renderas BARA om varukorgen har items */}
+      {hasItems && (
+        <div className="mt-8 flex justify-center">
+          <Link
+            href="/checkout"
+            className="inline-flex h-12 min-w-64 items-center justify-center rounded-md border px-10 text-base font-semibold bg-white text-black"
+          >
+            Till kassan
+          </Link>
+        </div>
+      )}
     </main>
   );
 }
