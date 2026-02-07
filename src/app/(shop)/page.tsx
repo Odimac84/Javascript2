@@ -79,7 +79,8 @@ export default async function HomePage() {
               key={spot.id}
               className="relative w-1/3 min-w-[200px] overflow-hidden rounded-xl border bg-white"
             >
-              <div className="relative aspect-[3/2]">
+              <div className="relative"
+                style={{ aspectRatio: "3 / 2" }}>
                 <img
                   src={spot.image_url}
                   alt={spot.title}

@@ -9,14 +9,20 @@ export default function Header() {
       <div className="mx-auto w-full max-w-6xl px-4 py-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="w-full sm:w-56 lg:w-[220px]">
-            <Image
-              src={PLACEHOLDER_IMAGE}
-              alt="Header banner"
-              width={600}
-              height={400}
-              className="h-14 w-full rounded-md border object-cover"
-              unoptimized
-            />
+            <Link
+                href="/"
+                className=""
+                aria-label="Hem"
+              >
+              <Image
+                src={PLACEHOLDER_IMAGE}
+                alt="Header banner"
+                width={600}
+                height={400}
+                className="h-14 w-full rounded-md border object-cover"
+                unoptimized
+              />
+            </Link>
           </div>
 
           <div className="flex w-full items-center justify-between gap-3 sm:col-start-2 sm:col-end-4">
