@@ -130,6 +130,7 @@ export default function NewProductForm() {
   return (
     <form
       className="block"
+      style={{ width: "500px", maxWidth: "none" }}
       onSubmit={(e) => {
         e.preventDefault();
         submit();

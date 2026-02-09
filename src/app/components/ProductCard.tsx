@@ -24,7 +24,7 @@ export default function ProductCard({
       <Link href={`/products/${p.slug}`} className="block">
         <div className="overflow-hidden rounded-lg border">
           <div
-            className="relative w-full overflow-hidden rounded-xl border bg-gray-100 "
+            className="relative w-full overflow-hidden border bg-gray-100 "
             style={{ aspectRatio: "3 / 2" }}>
             <img
               src={src}

@@ -3,7 +3,16 @@ import ProductCard from "@/components/ProductCard";
 import { PLACEHOLDER_IMAGE } from "@/lib/constants";
 import { getProducts } from "@/lib/api.server";
 import { db } from "@/lib/db";
+import { normalizeImageUrl } from "@/lib/images";
+import { getHero } from "@/lib/hero.server";
 
+const hero = getHero();
+
+const heroTitle = hero?.title ?? "Fallback title";
+const heroDescription =
+  hero?.description ??
+  "fallback description";
+const heroImage = normalizeImageUrl(hero?.image_url ?? PLACEHOLDER_IMAGE);
 type SpotRow = {
   id: number;
   title: string;
@@ -53,23 +62,21 @@ export default async function HomePage() {
     <main className="py-6">
       {/* HERO */}
       <section className="rounded-xl border bg-neutral-50 p-4">
-        <div className="grid gap-4 lg:grid-cols-2 lg:items-center">
-          <div>
-            <h1 className="text-xl font-semibold">Lorem ipsum dolor</h1>
-            <p className="mt-2 text-sm text-neutral-600">
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor.
-            </p>
-          </div>
+  <div className="grid gap-4 lg:grid-cols-2 lg:items-center">
+    <div>
+      <h1 className="text-xl font-semibold">{heroTitle}</h1>
+      <p className="mt-2 text-sm text-neutral-600">{heroDescription}</p>
+    </div>
 
-          <Image
-            src={PLACEHOLDER_IMAGE}
-            alt="Hero"
-            width={600}
-            height={400}
-            className="w-full rounded-lg border"
-          />
-        </div>
-      </section>
+    <Image
+      src={heroImage}
+      alt="Hero"
+      width={600}
+      height={400}
+      className="w-full rounded-lg border object-contain"
+    />
+  </div>
+</section>
 
       {/* SPOTS – endast ≥640px, alltid 3 i rad */}
       <section className="mt-10 hidden sm:block">

@@ -1,6 +1,6 @@
 import Database from "better-sqlite3";
 
-const PLACEHOLDER_IMAGE = "https://placehold.co/600x400/png";
+const BASE_PICSUM_URL = "https://picsum.photos/600/400";
 
 const DB_PATH = "database.sqlite";
 
@@ -60,8 +60,14 @@ function int(rng: () => number, min: number, max: number) {
   return Math.floor(rng() * (max - min + 1)) + min;
 }
 
+/** ✅ Random picsum URL with random=1..1000 */
+function randomPicsumUrl(rng: () => number) {
+  const n = Math.floor(rng() * 1000) + 1;
+  return `${BASE_PICSUM_URL}?random=${n}`;
+}
+
 db.transaction(() => {
-  console.log("Seeding database (recreate + products + categories + spots + orders schema)...");
+  console.log("Seeding database (recreate + products + categories + hero + spots + orders schema)...");
 
   db.exec(`
     DROP TABLE IF EXISTS product_categories;
@@ -75,6 +81,7 @@ db.transaction(() => {
     DROP TABLE IF EXISTS products;
     DROP TABLE IF EXISTS categories;
     DROP TABLE IF EXISTS spots;
+    DROP TABLE IF EXISTS hero;
   `);
 
   db.exec(`
@@ -162,9 +169,24 @@ db.transaction(() => {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    -- ✅ NEW: Hero table (separate from spots)
+    CREATE TABLE hero (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      image_url TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE INDEX idx_spots_active_sort ON spots(active, sort_order, id);
   `);
 
+  // Use seeded RNG for stable “random” images in seed data
+  const rng = mulberry32(1337);
+
+  // -------------------------
+  // Categories
+  // -------------------------
   const insertCategory = db.prepare(`INSERT INTO categories (name, slug) VALUES (?, ?)`);
   const categories = [
     { name: "Nyheter", slug: "nyheter" },
@@ -179,22 +201,45 @@ db.transaction(() => {
     categoryIds[c.slug] = Number(info.lastInsertRowid);
   }
 
+  // -------------------------
+  // ✅ Hero row (id=1)
+  // -------------------------
+  db.prepare(
+    `
+    INSERT INTO hero (id, title, description, image_url)
+    VALUES (1, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      title = excluded.title,
+      description = excluded.description,
+      image_url = excluded.image_url,
+      updated_at = datetime('now')
+    `
+  ).run(
+    "Lorem ipsum dolor",
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor.",
+    randomPicsumUrl(rng)
+  );
+
+  // -------------------------
+  // Spots
+  // -------------------------
   const insertSpot = db.prepare(
     `INSERT INTO spots (title, image_url, sort_order, active) VALUES (?, ?, ?, 1)`
   );
 
   const spotSeed = [
-    { title: "Lorem ipsum dolor", image_url: PLACEHOLDER_IMAGE, sort_order: 1 },
-    { title: "Lorem ipsum dolor", image_url: PLACEHOLDER_IMAGE, sort_order: 2 },
-    { title: "Lorem ipsum dolor", image_url: PLACEHOLDER_IMAGE, sort_order: 3 },
+    { title: "Lorem ipsum dolor", sort_order: 1 },
+    { title: "Lorem ipsum dolor", sort_order: 2 },
+    { title: "Lorem ipsum dolor", sort_order: 3 },
   ];
 
   for (const s of spotSeed) {
-    insertSpot.run(s.title, s.image_url, s.sort_order);
+    insertSpot.run(s.title, randomPicsumUrl(rng), s.sort_order);
   }
 
-  const rng = mulberry32(1337);
-
+  // -------------------------
+  // Products
+  // -------------------------
   const brands = ["Levis", "Nike", "Adidas", "Weekday", "Acne", "Carhartt", "Filippa K"];
   const colors = ["Svart", "Vit", "Grå", "Blå", "Grön", "Röd", "Beige"];
   const types = ["T-shirt", "Hoodie", "Sweatshirt", "Jeans", "Jacka", "Keps", "Skjorta"];
@@ -264,12 +309,15 @@ db.transaction(() => {
     const inStock = rng() < 0.9 ? 1 : 0;
     const active = rng() < 0.95 ? 1 : 0;
 
+    // ✅ Each product gets its own random (1–1000) image URL
+    const imageUrl = randomPicsumUrl(rng);
+
     const info = insertProduct.run(
       sku,
       name,
       slug,
       description,
-      PLACEHOLDER_IMAGE,
+      imageUrl,
       priceCents,
       inStock,
       active,
@@ -286,7 +334,7 @@ db.transaction(() => {
     if (i % 7 === 0) insertPC.run(productId, categoryIds["kampanjer"]);
   }
 
-  console.log(" Seed complete: categories, products, spots + (orders schema aligned)");
+  console.log(" Seed complete: hero + categories + products + spots + (orders schema aligned)");
 })();
 
 db.close();

@@ -6,7 +6,7 @@ export default async function AdminProductsPage() {
   const products = await getAllProducts();
 
   return (
-    <main className="max-w-4xl">
+    <main className="">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-900">Produkter</h1>
 

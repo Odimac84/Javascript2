@@ -101,7 +101,6 @@ export default function CartView() {
         )}
       </section>
 
-      {/* ✅ TABLET + DESKTOP (>= 640px): tabell */}
       <section className="mt-6 hidden sm:block">
         <div className="overflow-hidden rounded-2xl border">
           <table className="w-full border-collapse text-sm">
@@ -167,7 +166,6 @@ export default function CartView() {
         )}
       </section>
 
-      {/* ✅ CTA: renderas BARA om varukorgen har items */}
       {hasItems && (
         <div className="mt-8 flex justify-center">
           <Link

@@ -204,9 +204,6 @@ export default function CheckoutView() {
             <Link className="rounded-md border px-4 py-2 text-sm font-semibold" href="/">
               Till startsidan
             </Link>
-            <Link className="rounded-md border px-4 py-2 text-sm font-semibold" href="/cart">
-              Till varukorgen
-            </Link>
           </div>
         </div>
       </main>
@@ -221,11 +218,6 @@ export default function CheckoutView() {
           Varukorgen är tom.{" "}
           <Link className="underline" href="/">
             Fortsätt handla
-          </Link>
-        </div>
-        <div className="mt-6 text-center text-sm">
-          <Link className="underline text-gray-700" href="/cart">
-            Tillbaka till varukorgen
           </Link>
         </div>
       </main>
